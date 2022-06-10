@@ -1,13 +1,28 @@
+from email import message
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Float
+from flask_marshmallow import Marshmallow
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token
+from flask_mail import Mail, Message
 import os
+
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'planets.db')
+app.config['JWT_SECRET_KEY'] = 'super-secret' #change IRL
+app.config['MAIL_SERVER']='smtp.mailtrap.io'
+app.config['MAIL_PORT'] = 2525
+app.config['MAIL_USERNAME'] = '5987602bdfeef8'
+app.config['MAIL_PASSWORD'] = 'd4502ecb7ac807'
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 
+ma = Marshmallow(app)
 db = SQLAlchemy(app)
+jwt = JWTManager(app)
+mail = Mail(app)
 
 
 @app.cli.command('db_create')
@@ -32,18 +47,18 @@ def db_seed():
                      distance=35.98e6)
 
     venus = Planet(planet_name='Venus',
-                   planet_type='Class K',
-                   home_star='Sol',
-                   mass=4.867e24,
-                   radius=3760,
-                   distance=67.24e6)
+                         planet_type='Class K',
+                         home_star='Sol',
+                         mass=4.867e24,
+                         radius=3760,
+                         distance=67.24e6)
 
     earth = Planet(planet_name='Earth',
-                   planet_type='Class M',
-                   home_star='Sol',
-                   mass=5.972e24,
-                   radius=3959,
-                   distance=92.96e6)
+                     planet_type='Class M',
+                     home_star='Sol',
+                     mass=5.972e24,
+                     radius=3959,
+                     distance=92.96e6)
 
     db.session.add(mercury)
     db.session.add(venus)
@@ -55,7 +70,8 @@ def db_seed():
                      password='P@ssw0rd')
 
     db.session.add(test_user)
-    print('DATABSASE SEEDED')
+    db.session.commit()
+    print('Database seeded!')
 
 
 @app.route('/')
@@ -91,6 +107,59 @@ def url_variables(name: str, age: int):
         return jsonify(message="Welcome " + name + ", you are old enough!")
 
 
+@app.route('/planets')
+def planets():
+    planets_list = Planet.query.all()
+    result = planets_schema.dump(planets_list)
+    return jsonify(result)
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    email = request.form['email']
+    test = User.query.filter_by(email=email).first()
+    if test:
+        return jsonify(message='That email already exists.'), 409
+    else:
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        password = request.form['password']
+        user = User(first_name=first_name, last_name=last_name, email=email, password=password)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify(message="User created successfully."), 201
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    if request.is_json:
+        email = request.json['email']
+        password = request.json['password']
+    else:
+        email = request.form['email']
+        password = request.form['password']
+
+    test = User.query.filter_by(email=email, password=password).first()
+    if test:
+        access_token = create_access_token(identity=email)
+        return jsonify(message='Login succeeded!', access_token=access_token)
+    else:
+        return jsonify(message="Bad email or password"), 401
+
+
+@app.route('/retrieve_password/<string:email>', methods=['GET'])
+def retrieve_password(email: str):
+    user = User.query.filter_by(email=email).first()
+    if user:
+        msg = Message("Your planetary API password is" + user.password,
+                        sender = "admin@planetary-api.com",
+                        recipients=[email])
+        mail.send(msg)
+        return jsonify(message="Password sent to " + email)
+    else:
+        return jsonify(message="That email doesn't exist")
+
+
 # database models
 class User(db.Model):
     __tablename__ = 'users'
@@ -110,6 +179,23 @@ class Planet(db.Model):
     mass = Column(Float)
     radius = Column(Float)
     distance = Column(Float)
+
+
+class UserSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'first_name', 'last_name', 'email', 'password')
+
+
+class PlanetSchema(ma.Schema):
+    class Meta:
+        fields = ('planet_id', 'planet_name', 'planet_type', 'home_star', 'mass', 'radius', 'distance')
+
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+planet_schema = PlanetSchema()
+planets_schema = PlanetSchema(many=True)
 
 
 if __name__ == '__main__':

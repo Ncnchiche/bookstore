@@ -1,4 +1,6 @@
+import json
 from email import message
+import pandas as pd
 from flask import Flask, jsonify, request, make_response, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Float, ForeignKey
@@ -7,7 +9,6 @@ from flask_jwt_extended import JWTManager, jwt_required, create_access_token
 from flask_mail import Mail, Message
 import os
 from flask_login import LoginManager, UserMixin, login_manager, login_user, current_user, logout_user
-
 from sqlalchemy.orm import relationship
 
 app = Flask(__name__)
@@ -140,7 +141,8 @@ def db_seed():
     test_user = User(first_name='William',
                      last_name='Herschel',
                      email='test@test.com',
-                     password='P@ssw0rd')
+                     password='P@ssw0rd',
+                     is_admin='Yes')
 
 
 
@@ -180,34 +182,6 @@ def url_variables(name: str, age: int):
         return jsonify(message="Sorry " + name + ", you are not old enough."), 401
     else:
         return jsonify(message="Welcome " + name + ", you are old enough!")
-
-@app.route('/add_book', methods=['POST'])
-def add_book():
-    book_name= request.form['book_name']
-    test = Book.query.filter_by(book_name=book_name).first()
-    if test:
-        return jsonify("There is already a book by that name")
-    else:
-        book_genre=request.form['book_genre']
-        book_author=request.form['book_author']
-        book_publisher=request.form['book_publisher']
-        book_description=request.form['book_description']
-        price=request.form['price']
-        year_published=request.form['year_published']
-        copies_sold=request.form['copies_sold']
-        ISBN = request.form['ISBN']
-        book = Book(book_name=book_name, 
-                    book_genre=book_genre, 
-                    book_author=book_author, 
-                    book_publisher=book_publisher,
-                    book_description=book_description, 
-                    price=price, 
-                    year_published=year_published, 
-                    copies_sold=copies_sold, 
-                    ISBN=ISBN)
-        db.session.add(book)
-        db.session.commit()
-        return jsonify(message="Book created successfully."), 201
 
 @app.route('/books')
 def books():
@@ -317,6 +291,7 @@ def update_user():
         user.first_name = request.form['first_name']
         user.last_name = request.form['last_name']
         user.password =request.form['password']
+        user.is_admin = request.form['is_admin']
         db.session.commit()
         return jsonify("User information updated"),202
     else:
@@ -334,7 +309,44 @@ def all_cards(foreign_key: int):
     else:
         return jsonify(message="User does not exist"), 404
 
+@app.route('/retrieve_isbn/<int:ISBN>', methods=['GET'])#Sprint 4
+def Books(ISBN: int):
+    book = Book.query.filter_by(ISBN=ISBN).all()
+    if book:
+        book = Book.query.filter_by(ISBN=ISBN).first()
+        result_book = book_schema.dump(book)
+        return jsonify(result_book,)
+    else:
+        return jsonify(message="Book does not exist"), 404
 
+@app.route('/add_book', methods=['POST'])
+def add_book():
+    test = User.query.get(1)
+    if test:
+        return jsonify("Not admin")
+    else:
+        book_name=request.form('book_name')
+        book_genre=request.form['book_genre']
+        book_author=request.form['book_author']
+        book_publisher=request.form['book_publisher']
+        book_description=request.form['book_description']
+        price=request.form['price']
+        year_published=request.form['year_published']
+        copies_sold=request.form['copies_sold']
+        ISBN = request.form['ISBN']
+        book = Book(book_name=book_name, 
+                    book_genre=book_genre, 
+                    book_author=book_author, 
+                    book_publisher=book_publisher,
+                    book_description=book_description, 
+                    price=price, 
+                    year_published=year_published, 
+                    copies_sold=copies_sold, 
+                    ISBN=ISBN)
+        db.session.add(book)
+        db.session.commit()
+        return jsonify(message="Book created successfully."), 201
+        
 #--------------------------Database Models-------------------------------
 # database models
 class User(db.Model, UserMixin):#parent
@@ -344,6 +356,7 @@ class User(db.Model, UserMixin):#parent
     last_name = Column(String)
     email = Column(String, unique=True)
     password = Column(String)
+    is_admin = Column(String)
 
     #Relationship Management
     link_to_others = relationship("Creditcard", backref="USERS")
@@ -376,7 +389,7 @@ class Creditcard(db.Model): #child
 
 class UserSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'first_name', 'last_name', 'email', 'password')
+        fields = ('id', 'first_name', 'last_name', 'email', 'password', 'is_admin')
 
 class BookSchema(ma.Schema):
     class Meta:

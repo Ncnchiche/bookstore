@@ -299,14 +299,14 @@ def Books(ISBN: int):
     else:
         return jsonify(message="Book does not exist"), 404
 
-#Add Book
-@app.route('/add_book', methods=['POST'])
+#Admin Privledges can only add book if admin
+@app.route('/add_book', methods=['GET', 'POST'])
 def add_book():
-    test = User.query.get(1)
-    if test:
+    test_is_admin = current_user.is_admin
+    if test_is_admin != "Yes":
         return jsonify("Not admin")
     else:
-        book_name=request.form('book_name')
+        book_name=request.form['book_name']
         book_genre=request.form['book_genre']
         book_author=request.form['book_author']
         book_publisher=request.form['book_publisher']
@@ -370,7 +370,7 @@ class User(db.Model, UserMixin):#parent
     #Relationship Management
     link_to_others = relationship("Creditcard", backref="USERS")
 
-class Book(db.Model): ##child
+class Book(db.Model, UserMixin):
     __tablename__ = 'books'
     book_id = Column(Integer, primary_key=True)
     book_name = Column(String)

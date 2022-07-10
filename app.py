@@ -51,6 +51,7 @@ def db_seed():
                  book_author='Harper Lee',
                  book_publisher='HarperCollins Publishers',
                  book_description='To Kill a Mockingbird is a 1961 novel by Harper Lee. Set in small-town Alabama, the novel is a bildungsroman, or coming-of-age story, and chronicles the childhood of Scout and Jem Finch as their father Atticus defends a Black man falsely accused of rape. ',
+                 book_rating = 4.8,
                  price=15.99,
                  year_published=1960,
                  copies_sold=40000000,  # 40 million
@@ -62,6 +63,7 @@ def db_seed():
                  book_author='George Orwell',
                  book_publisher='Secker & Warburg',
                  book_description="1984 is a dystopian novella by George Orwell published in 1949, which follows the life of Winston Smith, a low ranking member of 'the Party', who is frustrated by the omnipresent eyes of the party, and its ominous ruler Big Brother. 'Big Brother' controls every aspect of people's lives.",
+                 book_rating = 4.8,
                  price=14.79,
                  year_published=1949,
                  copies_sold=50000000,  # 50 million
@@ -73,6 +75,7 @@ def db_seed():
                  book_author='Dan Brown',
                  book_publisher='Doubleday',
                  book_description="The Da Vinci Code follows 'symbologist' Robert Langdon and cryptologist Sophie Neveu after a murder in the Louvre Museum in Paris causes them to become involved in a battle between the Priory of Sion and Opus Dei over the possibility of Jesus Christ and Mary Magdalene having had a child together.",
+                 book_rating = 4.5,
                  price=12.99,
                  year_published=2003,
                  copies_sold=80000000,  # 80 million
@@ -83,6 +86,7 @@ def db_seed():
                  book_author='Atria',
                  book_publisher='Atria',
                  book_description="A Supernatural Crime book",
+                 book_rating = 4.3,
                  price=12.99,
                  year_published=2014,
                  copies_sold=90000000,  # 90 million
@@ -93,6 +97,7 @@ def db_seed():
                  book_author='Dan Brown',
                  book_publisher='Ballantine Books',
                  book_description="outlandish plot of this SF thriller from Crouch (the Wayward Pines trilogy). Jason Dessen, a quantum physicist, once had a brilliant research career ahead of him",
+                 book_rating = 4.5,
                  price=15.99,
                  year_published=2016,
                  copies_sold=60000000,  # 60 million
@@ -103,6 +108,7 @@ def db_seed():
                  book_author='Daphne Benedis-Grab',
                  book_publisher='Scholastic Press',
                  book_description="TBD",
+                 book_rating = 4.3,
                  price=12.99,
                  year_published=2003,
                  copies_sold=30000000,  # 30 million
@@ -113,6 +119,7 @@ def db_seed():
                  book_author='Robert Greene',
                  book_publisher='Penguin Books',
                  book_description="A moral, cunning, ruthless, and instructive, this piercing work distills three thousand years of the history of power into forty-eight well-explicated laws.",
+                 book_rating = 4.8,
                  price=19.99,
                  year_published=2003,
                  copies_sold=180000000,  # 180 million
@@ -123,6 +130,7 @@ def db_seed():
                  book_author='Delia Owens',
                  book_publisher='Penguin Publishing Group',
                  book_description="a painfully beautiful first novel that is at once a murder mystery, a coming-of-age narrative and a celebration of nature.",
+                 book_rating = 4.8,
                  price=12.99,
                  year_published=2021,
                  copies_sold=120000000,  # 120 million 
@@ -374,7 +382,37 @@ def list_x(book_id: int):
     book = db.session.query(Book).filter(Book.book_id).order_by(Book.book_id.asc()).limit(book_id)
     result = books_schema.dump(book)
     return jsonify(result)
-        
+
+@app.route("/ShoppingCart", methods=['GET','POST'])
+def makeShoppingCart():
+    user_id = current_user.id
+    isDuplicate = ShoppingCart.query.filter_by(foreign_key = user_id).first()
+    test = Book.query.filter_by(book_name=book_name, price=price).first()
+    book_name = request.form['book_name']
+    if isDuplicate:
+        return jsonify("This Shopping Cart is already in the database") 
+
+    else:
+        LookInto = Book.query.filter_by(book_name = book_name)
+        storedBook = book_schema.dump(LookInto)
+        book_id = storedBook.book_id
+        book_name = storedBook.book_name
+        price = storedBook.price
+        addBook = ShoppingCart(book_id = book_id, book_name = book_name, price = price, foreign_key = user_id)
+        db.session.add(addBook)
+        db.session.commit()
+        return jsonify(addBook, storedBook)
+    
+
+
+@app.route('/show_cart/<int:foreign_key>', methods=['GET', 'POST'])
+def show_cart(foreign_key: int):
+    ListShoppingCart = ShoppingCart.query.filter_by(foreign_key=foreign_key).all()
+    if ListShoppingCart:
+        results = ShoppingCart_schema.dump(ListShoppingCart)
+        return jsonify(results)
+    else:
+        return jsonify(message="Shopping Cart does not exist"), 404
 #--------------------------Database Models-------------------------------
 # database models
 class User(db.Model, UserMixin):#parent
@@ -414,6 +452,13 @@ class Creditcard(db.Model): #child
     #Relationship Management
     foreign_key = Column(Integer, ForeignKey('users.id'))
 
+class ShoppingCart(db.Model): #child
+    __tablename__ = 'cart'
+    book_id= Column(Integer,primary_key=True)
+    book_name = Column(String)
+    price = Column(Float)
+    foreign_key = Column(Integer,ForeignKey('users.id'))
+
 class Author(db.Model):
     __tablename__ = 'authors'
     author_id = Column(Integer, primary_key=True)
@@ -439,7 +484,9 @@ class CreditcardSchema(ma.Schema):
     class Meta:
         fields = ('creditcard_id', 'CC_num', 'creditcard_cvv', 'creditcard_exp', 'foreign_key')
 
-
+class ShoppingCartSchema(ma.Schema):
+    class Meta:
+         fields = ('book_id', 'book_name', 'price')
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
@@ -453,6 +500,8 @@ Creditcards_schema=CreditcardSchema(many=True)
 author_Schema = AuthorSchema
 authors_Schema= AuthorSchema(many=True)
 
+ShoppingCart_schema = ShoppingCartSchema()
+ShoppingCarts_schema =ShoppingCartSchema(many=True)
 #-----------------Load User-------------------------------
 @login_manager.user_loader
 def load_user(user_id):

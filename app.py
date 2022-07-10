@@ -155,41 +155,14 @@ def db_seed():
 def hello_world():
     return 'Hello World!'
 
-
-@app.route('/super_simple')
-def super_simple():
-    return jsonify(message='Hello from the Planetary API.'), 200
-
-
-@app.route('/not_found')
-def not_found():
-    return jsonify(message='That resource was not found'), 404
-
-
-@app.route('/parameters')
-def parameters():
-    name = request.args.get('name')
-    age = int(request.args.get('age'))
-    if age < 18:
-        return jsonify(message="Sorry " + name + ", you are not old enough."), 401
-    else:
-        return jsonify(message="Welcome " + name + ", you are old enough!")
-
-
-@app.route('/url_variables/<string:name>/<int:age>')
-def url_variables(name: str, age: int):
-    if age < 18:
-        return jsonify(message="Sorry " + name + ", you are not old enough."), 401
-    else:
-        return jsonify(message="Welcome " + name + ", you are old enough!")
-
+#Retrieve all books
 @app.route('/books')
 def books():
     book_list = Book.query.all()
     result = book_schema.dump(book_list)
     return jsonify(result)
 
-
+#Register new user
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     email = request.form['email']
@@ -205,6 +178,7 @@ def register():
         db.session.commit()
         return jsonify(message="User created successfully."), 201
 
+#Login
 @app.route('/login', methods=['POST'])
 def login():
     if request.is_json:
@@ -223,7 +197,7 @@ def login():
     else:
         return jsonify(message="Bad email or password"), 401
 
-
+#Create a credit card
 @app.route('/CreditCard', methods=['GET', 'POST'])
 def make_creditcard():
 
@@ -243,6 +217,7 @@ def make_creditcard():
         db.session.commit()
         return jsonify(message="Credit Card added successfully."), 201
 
+#Retrieve Password by email
 @app.route('/retrieve_password/<string:email>', methods=['GET'])
 def retrieve_password(email: str):
     user = User.query.filter_by(email=email).first()
@@ -255,6 +230,7 @@ def retrieve_password(email: str):
     else:
         return jsonify(message="That email doesn't exist")
 
+#Retrieve User details by id
 @app.route('/user_details/<int:id>', methods=["GET"])
 def user_details(id: int):
     user = User.query.filter_by(id=id).first()
@@ -264,6 +240,7 @@ def user_details(id: int):
     else:
         return jsonify(message="User does not exist"), 404
 
+#Retrieve all books from same genre
 @app.route('/book_genre/<string:book_genre>', methods=['GET'])
 def get_book_by_genre(book_genre: String):
     book = Book.query.filter_by(book_genre=book_genre).all()
@@ -273,7 +250,7 @@ def get_book_by_genre(book_genre: String):
     else:
         return jsonify(message="Book Genre does not exist"), 404
 
-
+#Retrieve book by author name
 @app.route('/book_by/<string:book_author>', methods=['GET'])#Sprint 4
 def book_by(book_author: String):
     book = Book.query.filter_by(book_author=book_author).all()
@@ -283,6 +260,7 @@ def book_by(book_author: String):
     else:
         return jsonify(message="Author does not exist"), 404
 
+#Update user information
 @app.route('/update_user', methods=['PUT'])#Sprint 4
 def update_user():
     email = request.form['email']
@@ -297,6 +275,7 @@ def update_user():
     else:
         return jsonify("Email not recognized."), 404
 
+#Retrieve all cards a user has
 @app.route('/all_cards/<int:foreign_key>', methods=['GET'])#Sprint 4
 def all_cards(foreign_key: int):
     card = Creditcard.query.filter_by(foreign_key=foreign_key).all()
@@ -309,6 +288,7 @@ def all_cards(foreign_key: int):
     else:
         return jsonify(message="User does not exist"), 404
 
+#Retrieve book by ISBN
 @app.route('/retrieve_isbn/<int:ISBN>', methods=['GET'])#Sprint 4
 def Books(ISBN: int):
     book = Book.query.filter_by(ISBN=ISBN).all()
@@ -319,13 +299,14 @@ def Books(ISBN: int):
     else:
         return jsonify(message="Book does not exist"), 404
 
-@app.route('/add_book', methods=['POST'])
+#Admin Privledges can only add book if admin
+@app.route('/add_book', methods=['GET', 'POST'])
 def add_book():
-    test = User.query.get(1)
-    if test:
+    test_is_admin = current_user.is_admin
+    if test_is_admin != "Yes":
         return jsonify("Not admin")
     else:
-        book_name=request.form('book_name')
+        book_name=request.form['book_name']
         book_genre=request.form['book_genre']
         book_author=request.form['book_author']
         book_publisher=request.form['book_publisher']
@@ -346,6 +327,53 @@ def add_book():
         db.session.add(book)
         db.session.commit()
         return jsonify(message="Book created successfully."), 201
+
+#An administrator can create an author
+@app.route('/add_author', methods=['POST'])
+def add_author():
+    test_is_admin = current_user.is_admin
+    if test_is_admin != "Yes":
+        return jsonify("Not admin")
+    else:
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        biography = request.form['biography']
+        publisher = request.form['publisher']
+        author = Author(first_name=first_name, 
+                    last_name=last_name, 
+                    biography=biography,
+                    publisher=publisher)
+        db.session.add(author)
+        db.session.commit()
+        return jsonify(message="Author added successfully."), 201
+
+#Retrieve List of Books by rating
+@app.route('/book_ratings/<float:book_rating>', methods=["GET"])
+def book_ratings(book_rating: float):
+    book = Book.query.filter_by(book_rating=book_rating).all()
+    if book:
+        result = books_schema.dump(book)
+        return jsonify(result)
+    else:
+        return jsonify(message="That book rating does not exist"), 404
+
+
+
+#Retrieve List of top 5 Sellers
+@app.route('/top_sellers', methods=['GET', 'POST'])
+def top_sellers():
+    book = db.session.query(Book).filter(Book.copies_sold).order_by(Book.copies_sold.desc()).limit(5)
+    result = books_schema.dump(book)
+    return jsonify(result)
+    #book = Book.query(Book.copies_sold).order_by(func.desc(Book.copies_sold)).limit(5).all()
+    
+
+# Retrieve List of X Books at a time where X is an integer from a given position in the overall recordset.
+@app.route('/list_x/<int:book_id>', methods=['GET'])
+def list_x(book_id: int):
+    book = db.session.query(Book).filter(Book.book_id).order_by(Book.book_id.asc()).limit(book_id)
+    result = books_schema.dump(book)
+    return jsonify(result)
         
 #--------------------------Database Models-------------------------------
 # database models
@@ -361,7 +389,7 @@ class User(db.Model, UserMixin):#parent
     #Relationship Management
     link_to_others = relationship("Creditcard", backref="USERS")
 
-class Book(db.Model): ##child
+class Book(db.Model, UserMixin):
     __tablename__ = 'books'
     book_id = Column(Integer, primary_key=True)
     book_name = Column(String)
@@ -386,6 +414,17 @@ class Creditcard(db.Model): #child
     #Relationship Management
     foreign_key = Column(Integer, ForeignKey('users.id'))
 
+class Author(db.Model):
+    __tablename__ = 'authors'
+    author_id = Column(Integer, primary_key=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    biography = Column(String)
+    publisher = Column(String)
+
+class AuthorSchema(ma.Schema):
+    class Meta:
+        fields = ('author_id', 'first_name', 'last_name', 'biography', 'publisher')
 
 class UserSchema(ma.Schema):
     class Meta:
@@ -410,6 +449,9 @@ books_schema = BookSchema(many=True)
 
 Creditcard_schema=CreditcardSchema()
 Creditcards_schema=CreditcardSchema(many=True)
+
+author_Schema = AuthorSchema
+authors_Schema= AuthorSchema(many=True)
 
 #-----------------Load User-------------------------------
 @login_manager.user_loader

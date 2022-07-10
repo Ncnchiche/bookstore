@@ -328,6 +328,25 @@ def add_book():
         db.session.commit()
         return jsonify(message="Book created successfully."), 201
 
+#An administrator can create an author
+@app.route('/add_author', methods=['POST'])
+def add_author():
+    test_is_admin = current_user.is_admin
+    if test_is_admin != "Yes":
+        return jsonify("Not admin")
+    else:
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        biography = request.form['biography']
+        publisher = request.form['publisher']
+        author = Author(first_name=first_name, 
+                    last_name=last_name, 
+                    biography=biography,
+                    publisher=publisher)
+        db.session.add(author)
+        db.session.commit()
+        return jsonify(message="Author added successfully."), 201
+
 #Retrieve List of Books by rating
 @app.route('/book_ratings/<float:book_rating>', methods=["GET"])
 def book_ratings(book_rating: float):
@@ -395,6 +414,17 @@ class Creditcard(db.Model): #child
     #Relationship Management
     foreign_key = Column(Integer, ForeignKey('users.id'))
 
+class Author(db.Model):
+    __tablename__ = 'authors'
+    author_id = Column(Integer, primary_key=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    biography = Column(String)
+    publisher = Column(String)
+
+class AuthorSchema(ma.Schema):
+    class Meta:
+        fields = ('author_id', 'first_name', 'last_name', 'biography', 'publisher')
 
 class UserSchema(ma.Schema):
     class Meta:
@@ -419,6 +449,9 @@ books_schema = BookSchema(many=True)
 
 Creditcard_schema=CreditcardSchema()
 Creditcards_schema=CreditcardSchema(many=True)
+
+author_Schema = AuthorSchema
+authors_Schema= AuthorSchema(many=True)
 
 #-----------------Load User-------------------------------
 @login_manager.user_loader

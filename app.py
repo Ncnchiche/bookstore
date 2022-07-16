@@ -1,14 +1,18 @@
-import json
+from ast import For
+from asyncio import shield
 from email import message
-import pandas as pd
+from genericpath import exists
+from msilib.schema import Shortcut
 from flask import Flask, jsonify, request, make_response, session
 from flask_sqlalchemy import SQLAlchemy
+from itsdangerous import json
 from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from flask_marshmallow import Marshmallow
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token
 from flask_mail import Mail, Message
 import os
 from flask_login import LoginManager, UserMixin, login_manager, login_user, current_user, logout_user
+
 from sqlalchemy.orm import relationship
 
 app = Flask(__name__)
@@ -51,7 +55,6 @@ def db_seed():
                  book_author='Harper Lee',
                  book_publisher='HarperCollins Publishers',
                  book_description='To Kill a Mockingbird is a 1961 novel by Harper Lee. Set in small-town Alabama, the novel is a bildungsroman, or coming-of-age story, and chronicles the childhood of Scout and Jem Finch as their father Atticus defends a Black man falsely accused of rape. ',
-                 book_rating = 4.8,
                  price=15.99,
                  year_published=1960,
                  copies_sold=40000000,  # 40 million
@@ -63,7 +66,6 @@ def db_seed():
                  book_author='George Orwell',
                  book_publisher='Secker & Warburg',
                  book_description="1984 is a dystopian novella by George Orwell published in 1949, which follows the life of Winston Smith, a low ranking member of 'the Party', who is frustrated by the omnipresent eyes of the party, and its ominous ruler Big Brother. 'Big Brother' controls every aspect of people's lives.",
-                 book_rating = 4.8,
                  price=14.79,
                  year_published=1949,
                  copies_sold=50000000,  # 50 million
@@ -75,7 +77,6 @@ def db_seed():
                  book_author='Dan Brown',
                  book_publisher='Doubleday',
                  book_description="The Da Vinci Code follows 'symbologist' Robert Langdon and cryptologist Sophie Neveu after a murder in the Louvre Museum in Paris causes them to become involved in a battle between the Priory of Sion and Opus Dei over the possibility of Jesus Christ and Mary Magdalene having had a child together.",
-                 book_rating = 4.5,
                  price=12.99,
                  year_published=2003,
                  copies_sold=80000000,  # 80 million
@@ -86,7 +87,6 @@ def db_seed():
                  book_author='Atria',
                  book_publisher='Atria',
                  book_description="A Supernatural Crime book",
-                 book_rating = 4.3,
                  price=12.99,
                  year_published=2014,
                  copies_sold=90000000,  # 90 million
@@ -97,7 +97,6 @@ def db_seed():
                  book_author='Dan Brown',
                  book_publisher='Ballantine Books',
                  book_description="outlandish plot of this SF thriller from Crouch (the Wayward Pines trilogy). Jason Dessen, a quantum physicist, once had a brilliant research career ahead of him",
-                 book_rating = 4.5,
                  price=15.99,
                  year_published=2016,
                  copies_sold=60000000,  # 60 million
@@ -108,7 +107,6 @@ def db_seed():
                  book_author='Daphne Benedis-Grab',
                  book_publisher='Scholastic Press',
                  book_description="TBD",
-                 book_rating = 4.3,
                  price=12.99,
                  year_published=2003,
                  copies_sold=30000000,  # 30 million
@@ -119,7 +117,6 @@ def db_seed():
                  book_author='Robert Greene',
                  book_publisher='Penguin Books',
                  book_description="A moral, cunning, ruthless, and instructive, this piercing work distills three thousand years of the history of power into forty-eight well-explicated laws.",
-                 book_rating = 4.8,
                  price=19.99,
                  year_published=2003,
                  copies_sold=180000000,  # 180 million
@@ -130,7 +127,6 @@ def db_seed():
                  book_author='Delia Owens',
                  book_publisher='Penguin Publishing Group',
                  book_description="a painfully beautiful first novel that is at once a murder mystery, a coming-of-age narrative and a celebration of nature.",
-                 book_rating = 4.8,
                  price=12.99,
                  year_published=2021,
                  copies_sold=120000000,  # 120 million 
@@ -149,8 +145,7 @@ def db_seed():
     test_user = User(first_name='William',
                      last_name='Herschel',
                      email='test@test.com',
-                     password='P@ssw0rd',
-                     is_admin='Yes')
+                     password='P@ssw0rd')
 
 
 
@@ -163,14 +158,69 @@ def db_seed():
 def hello_world():
     return 'Hello World!'
 
-#Retrieve all books
+
+@app.route('/super_simple')
+def super_simple():
+    return jsonify(message='Hello from the Planetary API.'), 200
+
+
+@app.route('/not_found')
+def not_found():
+    return jsonify(message='That resource was not found'), 404
+
+
+@app.route('/parameters')
+def parameters():
+    name = request.args.get('name')
+    age = int(request.args.get('age'))
+    if age < 18:
+        return jsonify(message="Sorry " + name + ", you are not old enough."), 401
+    else:
+        return jsonify(message="Welcome " + name + ", you are old enough!")
+
+
+@app.route('/url_variables/<string:name>/<int:age>')
+def url_variables(name: str, age: int):
+    if age < 18:
+        return jsonify(message="Sorry " + name + ", you are not old enough."), 401
+    else:
+        return jsonify(message="Welcome " + name + ", you are old enough!")
+'''
+@app.route('/add_book', methods=['POST'])
+def add_book():
+    book_name= request.form['book_name']
+    test = Book.query.filter_by(book_name=book_name).first()
+    if test:
+        return jsonify("There is already a book by that name")
+    else:
+        book_genre=request.form['book_genre']
+        book_author=request.form['book_author']
+        book_publisher=request.form['book_publisher']
+        book_description=request.form['book_description']
+        price=request.form['price']
+        year_published=request.form['year_published']
+        copies_sold=request.form['copies_sold']
+        ISBN = request.form['ISBN']
+        book = Book(book_name=book_name, 
+                    book_genre=book_genre, 
+                    book_author=book_author, 
+                    book_publisher=book_publisher,
+                    book_description=book_description, 
+                    price=price, 
+                    year_published=year_published, 
+                    copies_sold=copies_sold, 
+                    ISBN=ISBN)
+        db.session.add(book)
+        db.session.commit()
+        return jsonify(message="Book created successfully."), 201
+'''
 @app.route('/books')
 def books():
     book_list = Book.query.all()
     result = book_schema.dump(book_list)
     return jsonify(result)
 
-#Register new user
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     email = request.form['email']
@@ -186,7 +236,6 @@ def register():
         db.session.commit()
         return jsonify(message="User created successfully."), 201
 
-#Login
 @app.route('/login', methods=['POST'])
 def login():
     if request.is_json:
@@ -205,7 +254,7 @@ def login():
     else:
         return jsonify(message="Bad email or password"), 401
 
-#Create a credit card
+
 @app.route('/CreditCard', methods=['GET', 'POST'])
 def make_creditcard():
 
@@ -225,7 +274,6 @@ def make_creditcard():
         db.session.commit()
         return jsonify(message="Credit Card added successfully."), 201
 
-#Retrieve Password by email
 @app.route('/retrieve_password/<string:email>', methods=['GET'])
 def retrieve_password(email: str):
     user = User.query.filter_by(email=email).first()
@@ -238,7 +286,6 @@ def retrieve_password(email: str):
     else:
         return jsonify(message="That email doesn't exist")
 
-#Retrieve User details by id
 @app.route('/user_details/<int:id>', methods=["GET"])
 def user_details(id: int):
     user = User.query.filter_by(id=id).first()
@@ -248,7 +295,6 @@ def user_details(id: int):
     else:
         return jsonify(message="User does not exist"), 404
 
-#Retrieve all books from same genre
 @app.route('/book_genre/<string:book_genre>', methods=['GET'])
 def get_book_by_genre(book_genre: String):
     book = Book.query.filter_by(book_genre=book_genre).all()
@@ -258,7 +304,7 @@ def get_book_by_genre(book_genre: String):
     else:
         return jsonify(message="Book Genre does not exist"), 404
 
-#Retrieve book by author name
+
 @app.route('/book_by/<string:book_author>', methods=['GET'])#Sprint 4
 def book_by(book_author: String):
     book = Book.query.filter_by(book_author=book_author).all()
@@ -268,7 +314,34 @@ def book_by(book_author: String):
     else:
         return jsonify(message="Author does not exist"), 404
 
-#Update user information
+
+@app.route('/book_ratings/<float:book_rating>', methods=["GET"])
+def book_ratings(book_rating: float):
+    book = Book.query.filter_by(book_rating=book_rating).all()
+    if book:
+        result = books_schema.dump(book)
+        return jsonify(result)
+    else:
+        return jsonify(message="That book rating does not exist"), 404
+
+
+
+#Retrieve List of top 5 Sellers
+@app.route('/top_sellers', methods=['GET', 'POST'])
+def top_sellers():
+    book = db.session.query(Book).filter(Book.copies_sold).order_by(Book.copies_sold.desc()).limit(5)
+    result = books_schema.dump(book)
+    return jsonify(result)
+    #book = Book.query(Book.copies_sold).order_by(func.desc(Book.copies_sold)).limit(5).all()
+    
+
+# Retrieve List of X Books at a time where X is an integer from a given position in the overall recordset.
+@app.route('/list_x/<int:book_id>', methods=['GET'])
+def list_x(book_id: int):
+    book = db.session.query(Book).filter(Book.book_id).order_by(Book.book_id.asc()).limit(book_id)
+    result = books_schema.dump(book)
+    return jsonify(result)
+
 @app.route('/update_user', methods=['PUT'])#Sprint 4
 def update_user():
     email = request.form['email']
@@ -277,13 +350,11 @@ def update_user():
         user.first_name = request.form['first_name']
         user.last_name = request.form['last_name']
         user.password =request.form['password']
-        user.is_admin = request.form['is_admin']
         db.session.commit()
         return jsonify("User information updated"),202
     else:
         return jsonify("Email not recognized."), 404
 
-#Retrieve all cards a user has
 @app.route('/all_cards/<int:foreign_key>', methods=['GET'])#Sprint 4
 def all_cards(foreign_key: int):
     card = Creditcard.query.filter_by(foreign_key=foreign_key).all()
@@ -295,6 +366,52 @@ def all_cards(foreign_key: int):
         return jsonify(result_user, results)
     else:
         return jsonify(message="User does not exist"), 404
+
+@app.route("/ShoppingCart", methods=['GET', 'POST'])
+def add_to_cart():
+    book_name = request.form['book_name']
+    book = Book.query.filter_by(book_name=book_name).first()
+    user_id = current_user.id
+    user_cart = ShoppingCart.query.filter_by(foreign_key=user_id, book_name=book_name).first()
+    if user_cart:
+        return jsonify(message="That book is already in cart"), 404
+
+    else:
+        product_id = book.book_id
+        product_price = book.price
+
+        cart_item = ShoppingCart(book_id=product_id,
+                                 book_name=book_name,
+                                 price=product_price,
+                                 foreign_key=user_id)
+        db.session.add(cart_item)
+        db.session.commit()
+        return jsonify(message="Book added to cart")
+
+@app.route("/deleteFromCart",methods=['GET', 'DELETE'])
+def delete_from_cart():
+    deletedBook = request.form['book_id']
+    User_id = current_user.id
+    deleteThisBook = ShoppingCart.query.filter_by(book_id = deletedBook,foreign_key= User_id).first()
+    if deleteThisBook:
+        db.session.delete(deleteThisBook)
+        db.session.commit()
+        return jsonify(message = "Book removed from the cart")
+    
+    else:
+        return jsonify(message = "Book doesnt exist in the cart")
+
+
+@app.route("/show_cart", methods=['GET', 'POST'])
+def show_cart():
+    user_id = current_user.id
+    user_cart = ShoppingCart.query.filter_by(foreign_key=user_id).all()
+
+    if user_cart:
+        result = ShoppingCarts_schema.dump(user_cart)
+        return jsonify(result)
+    else:
+        return jsonify(message="This user does not have a cart")
 
 #Retrieve book by ISBN
 @app.route('/retrieve_isbn/<int:ISBN>', methods=['GET'])#Sprint 4
@@ -336,6 +453,7 @@ def add_book():
         db.session.commit()
         return jsonify(message="Book created successfully."), 201
 
+
 #An administrator can create an author
 @app.route('/add_author', methods=['POST'])
 def add_author():
@@ -355,64 +473,6 @@ def add_author():
         db.session.commit()
         return jsonify(message="Author added successfully."), 201
 
-#Retrieve List of Books by rating
-@app.route('/book_ratings/<float:book_rating>', methods=["GET"])
-def book_ratings(book_rating: float):
-    book = Book.query.filter_by(book_rating=book_rating).all()
-    if book:
-        result = books_schema.dump(book)
-        return jsonify(result)
-    else:
-        return jsonify(message="That book rating does not exist"), 404
-
-
-
-#Retrieve List of top 5 Sellers
-@app.route('/top_sellers', methods=['GET', 'POST'])
-def top_sellers():
-    book = db.session.query(Book).filter(Book.copies_sold).order_by(Book.copies_sold.desc()).limit(5)
-    result = books_schema.dump(book)
-    return jsonify(result)
-    #book = Book.query(Book.copies_sold).order_by(func.desc(Book.copies_sold)).limit(5).all()
-    
-
-# Retrieve List of X Books at a time where X is an integer from a given position in the overall recordset.
-@app.route('/list_x/<int:book_id>', methods=['GET'])
-def list_x(book_id: int):
-    book = db.session.query(Book).filter(Book.book_id).order_by(Book.book_id.asc()).limit(book_id)
-    result = books_schema.dump(book)
-    return jsonify(result)
-
-@app.route("/ShoppingCart", methods=['GET','POST'])
-def makeShoppingCart():
-    user_id = current_user.id
-    isDuplicate = ShoppingCart.query.filter_by(foreign_key = user_id).first()
-    test = Book.query.filter_by(book_name=book_name, price=price).first()
-    book_name = request.form['book_name']
-    if isDuplicate:
-        return jsonify("This Shopping Cart is already in the database") 
-
-    else:
-        LookInto = Book.query.filter_by(book_name = book_name)
-        storedBook = book_schema.dump(LookInto)
-        book_id = storedBook.book_id
-        book_name = storedBook.book_name
-        price = storedBook.price
-        addBook = ShoppingCart(book_id = book_id, book_name = book_name, price = price, foreign_key = user_id)
-        db.session.add(addBook)
-        db.session.commit()
-        return jsonify(addBook, storedBook)
-    
-
-
-@app.route('/show_cart/<int:foreign_key>', methods=['GET', 'POST'])
-def show_cart(foreign_key: int):
-    ListShoppingCart = ShoppingCart.query.filter_by(foreign_key=foreign_key).all()
-    if ListShoppingCart:
-        results = ShoppingCart_schema.dump(ListShoppingCart)
-        return jsonify(results)
-    else:
-        return jsonify(message="Shopping Cart does not exist"), 404
 #--------------------------Database Models-------------------------------
 # database models
 class User(db.Model, UserMixin):#parent
@@ -422,12 +482,11 @@ class User(db.Model, UserMixin):#parent
     last_name = Column(String)
     email = Column(String, unique=True)
     password = Column(String)
-    is_admin = Column(String)
 
     #Relationship Management
     link_to_others = relationship("Creditcard", backref="USERS")
 
-class Book(db.Model, UserMixin):
+class Book(db.Model): ##child
     __tablename__ = 'books'
     book_id = Column(Integer, primary_key=True)
     book_name = Column(String)
@@ -452,13 +511,15 @@ class Creditcard(db.Model): #child
     #Relationship Management
     foreign_key = Column(Integer, ForeignKey('users.id'))
 
+
 class ShoppingCart(db.Model): #child
-    __tablename__ = 'cart'
-    book_id= Column(Integer,primary_key=True)
+    tablename = 'cart'
+    cart_id= Column(Integer,primary_key=True)
+    book_id = Column(Integer)
     book_name = Column(String)
     price = Column(Float)
     foreign_key = Column(Integer,ForeignKey('users.id'))
-
+    
 class Author(db.Model):
     __tablename__ = 'authors'
     author_id = Column(Integer, primary_key=True)
@@ -471,9 +532,10 @@ class AuthorSchema(ma.Schema):
     class Meta:
         fields = ('author_id', 'first_name', 'last_name', 'biography', 'publisher')
 
+
 class UserSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'first_name', 'last_name', 'email', 'password', 'is_admin')
+        fields = ('id', 'first_name', 'last_name', 'email', 'password')
 
 class BookSchema(ma.Schema):
     class Meta:
@@ -486,7 +548,7 @@ class CreditcardSchema(ma.Schema):
 
 class ShoppingCartSchema(ma.Schema):
     class Meta:
-         fields = ('book_id', 'book_name', 'price')
+         fields = ('cart_id', 'book_id', 'book_name', 'price', 'foreign_key')
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
@@ -494,11 +556,11 @@ users_schema = UserSchema(many=True)
 book_schema = BookSchema()
 books_schema = BookSchema(many=True)
 
-Creditcard_schema=CreditcardSchema()
-Creditcards_schema=CreditcardSchema(many=True)
+Creditcard_schema = CreditcardSchema()
+Creditcards_schema = CreditcardSchema(many=True)
 
 author_Schema = AuthorSchema
-authors_Schema= AuthorSchema(many=True)
+authors_Schema = AuthorSchema(many=True)
 
 ShoppingCart_schema = ShoppingCartSchema()
 ShoppingCarts_schema =ShoppingCartSchema(many=True)

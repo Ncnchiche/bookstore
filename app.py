@@ -277,7 +277,6 @@ def update_user():
         user.first_name = request.form['first_name']
         user.last_name = request.form['last_name']
         user.password =request.form['password']
-        user.is_admin = request.form['is_admin']
         db.session.commit()
         return jsonify("User information updated"),202
     else:
@@ -383,36 +382,54 @@ def list_x(book_id: int):
     result = books_schema.dump(book)
     return jsonify(result)
 
-@app.route("/ShoppingCart", methods=['GET','POST'])
-def makeShoppingCart():
-    user_id = current_user.id
-    isDuplicate = ShoppingCart.query.filter_by(foreign_key = user_id).first()
-    test = Book.query.filter_by(book_name=book_name, price=price).first()
+#Add Book to shopping cart
+@app.route("/ShoppingCart", methods=['GET', 'POST'])
+def add_to_cart():
     book_name = request.form['book_name']
-    if isDuplicate:
-        return jsonify("This Shopping Cart is already in the database") 
+    book = Book.query.filter_by(book_name=book_name).first()
+    user_id = current_user.id
+    user_cart = ShoppingCart.query.filter_by(foreign_key=user_id, book_name=book_name).first()
+    if user_cart:
+        return jsonify(message="That book is already in cart"), 404
 
     else:
-        LookInto = Book.query.filter_by(book_name = book_name)
-        storedBook = book_schema.dump(LookInto)
-        book_id = storedBook.book_id
-        book_name = storedBook.book_name
-        price = storedBook.price
-        addBook = ShoppingCart(book_id = book_id, book_name = book_name, price = price, foreign_key = user_id)
-        db.session.add(addBook)
+        product_id = book.book_id
+        product_price = book.price
+
+        cart_item = ShoppingCart(book_id=product_id,
+                                 book_name=book_name,
+                                 price=product_price,
+                                 foreign_key=user_id)
+        db.session.add(cart_item)
         db.session.commit()
-        return jsonify(addBook, storedBook)
+        return jsonify(message="Book added to cart")
+
+#Delete book from shopping cart
+@app.route("/deleteFromCart",methods=['GET', 'DELETE'])
+def delete_from_cart():
+    deletedBook = request.form['book_id']
+    User_id = current_user.id
+    deleteThisBook = ShoppingCart.query.filter_by(book_id = deletedBook,foreign_key= User_id).first()
+    if deleteThisBook:
+        db.session.delete(deleteThisBook)
+        db.session.commit()
+        return jsonify(message = "Book removed from the cart")
     
-
-
-@app.route('/show_cart/<int:foreign_key>', methods=['GET', 'POST'])
-def show_cart(foreign_key: int):
-    ListShoppingCart = ShoppingCart.query.filter_by(foreign_key=foreign_key).all()
-    if ListShoppingCart:
-        results = ShoppingCart_schema.dump(ListShoppingCart)
-        return jsonify(results)
     else:
-        return jsonify(message="Shopping Cart does not exist"), 404
+        return jsonify(message = "Book doesnt exist in the cart")
+
+#Show all books in shopping cart
+@app.route("/show_cart", methods=['GET', 'POST'])
+def show_cart():
+    user_id = current_user.id
+    user_cart = ShoppingCart.query.filter_by(foreign_key=user_id).all()
+
+    if user_cart:
+        result = ShoppingCarts_schema.dump(user_cart)
+        return jsonify(result)
+    else:
+        return jsonify(message="This user does not have a cart")
+
 #--------------------------Database Models-------------------------------
 # database models
 class User(db.Model, UserMixin):#parent
@@ -451,10 +468,11 @@ class Creditcard(db.Model): #child
 
     #Relationship Management
     foreign_key = Column(Integer, ForeignKey('users.id'))
-
+    
 class ShoppingCart(db.Model): #child
-    __tablename__ = 'cart'
-    book_id= Column(Integer,primary_key=True)
+    tablename = 'cart'
+    cart_id= Column(Integer,primary_key=True)
+    book_id = Column(Integer)
     book_name = Column(String)
     price = Column(Float)
     foreign_key = Column(Integer,ForeignKey('users.id'))
@@ -480,13 +498,13 @@ class BookSchema(ma.Schema):
         fields = ('book_id', 'book_name', 'book_genre', 'book_author', 'book_publisher',
                   'book_description', 'price', 'year_published', 'copies_sold','ISBN', 'book_rating')
 
+class ShoppingCartSchema(ma.Schema):
+    class Meta:
+         fields = ('cart_id', 'book_id', 'book_name', 'price', 'foreign_key')
+
 class CreditcardSchema(ma.Schema):
     class Meta:
         fields = ('creditcard_id', 'CC_num', 'creditcard_cvv', 'creditcard_exp', 'foreign_key')
-
-class ShoppingCartSchema(ma.Schema):
-    class Meta:
-         fields = ('book_id', 'book_name', 'price')
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)

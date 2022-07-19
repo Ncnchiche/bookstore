@@ -275,7 +275,8 @@ def user_details(id: int):
 #Retrieve List of Books by rating
 @app.route('/book_ratings/<float:book_rating>', methods=["GET"])
 def book_ratings(book_rating: float):
-    book = Book.query.filter_by(book_rating=book_rating).all()
+    #book = Book.query.filter_by(book_rating=book_rating).all()
+    book = db.session.query(Book).filter(Book.book_rating >= book_rating).order_by(Book.book_rating)
     if book:
         result = books_schema.dump(book)
         return jsonify(result)

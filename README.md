@@ -9,7 +9,7 @@
 
 This is a Flask Application 
  
-#Book Browsing and Sorting - Alejandro
+# Book Browsing and Sorting - Alejandro
 -Retrieve List of Books by Genre - Nathan
 
 -Retrieve List of Top Sellers (Top 10 books that have sold the most copied)
@@ -29,7 +29,7 @@ This is a Flask Application
 -Create Credit Card that belongs to a User and Retrieve a list of cards for that user
 
 
-#Shopping Cart  - Michael Charran
+# Shopping Cart  - Michael Charran
 
 -Create a shopping cart instance for a user. Shopping cart must belong to a user.
 
@@ -39,7 +39,7 @@ This is a Flask Application
 
 -Delete a book from the shopping cart instance for that user.
 
-#Book Details -Nathan
+# Book Details -Nathan
 
 -An administrator must be able to create a book with the book ISBN, book name, book description, price, author, genre, publisher , year published and copies sold.
 
@@ -51,7 +51,7 @@ This is a Flask Application
 -Must be able to retrieve a list of books associate with an author-
 
 
-#Wish List Management- Alan Chipy
+# Wish List Management- Alan Chipy
 
 -Must be able to create a wishlist of books that belongs to user and has a unique name
 

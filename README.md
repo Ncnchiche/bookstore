@@ -15,7 +15,7 @@
 
 -Retrieve List of X Books at a time where X is an integer from a given position in the overall recordset.
 
-#Profile Management - Schadrack Cineas
+# Profile Management - Schadrack Cineas
 
 -Create a User with username(email), password and optional fields (name, email address, home address)
 

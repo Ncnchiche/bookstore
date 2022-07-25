@@ -1,13 +1,10 @@
 # Bookstore Webapp
 ### Flask - BookStore webapp Backend
 
+# Architecture and Technology
 
 ### This Was Made using Flask as the framework, Python for the backend, and SQLlite for database 
- 
-  
- 
 
-This is a Flask Application 
  
 # Book Browsing and Sorting - Alejandro
 -Retrieve List of Books by Genre - Nathan

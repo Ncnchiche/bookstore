@@ -3,8 +3,10 @@
 
 # Architecture and Technology
 
-### This Was Made using Flask as the framework, Python for the backend, and SQLlite for database 
-
+### Flask as the framework
+### Python for the backend
+### SQLlite for database 
+### PostMan to Test the application
  
 # Book Browsing and Sorting - Alejandro
 -Retrieve List of Books by Genre - Nathan

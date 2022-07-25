@@ -1,5 +1,5 @@
 # Bookstore Webapp
-### Flask - BookStore webapp Backend
+### BookStore webapp Backend
 
 # Architecture and Technology
 

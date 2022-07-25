@@ -9,7 +9,7 @@
 ### PostMan to Test the application
  
 # Book Browsing and Sorting - Alejandro
--Retrieve List of Books by Genre - Nathan
+-Retrieve List of Books by Genre 
 
 -Retrieve List of Top Sellers (Top 10 books that have sold the most copied)
 

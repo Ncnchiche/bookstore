@@ -8,7 +8,7 @@
 ### SQLlite for database 
 ### PostMan to Test the application
  
-# Book Browsing and Sorting - Alejandro
+# Book Browsing and Sorting 
 -Retrieve List of Books by Genre 
 
 -Retrieve List of Top Sellers (Top 10 books that have sold the most copied)
@@ -17,7 +17,7 @@
 
 -Retrieve List of X Books at a time where X is an integer from a given position in the overall recordset.
 
-# Profile Management - Schadrack Cineas
+# Profile Management 
 
 -Create a User with username(email), password and optional fields (name, email address, home address)
 
@@ -28,7 +28,7 @@
 -Create Credit Card that belongs to a User and Retrieve a list of cards for that user
 
 
-# Shopping Cart  - Michael Charran
+# Shopping Cart 
 
 -Create a shopping cart instance for a user. Shopping cart must belong to a user.
 
@@ -38,7 +38,7 @@
 
 -Delete a book from the shopping cart instance for that user.
 
-# Book Details -Nathan
+# Book Details 
 
 -An administrator must be able to create a book with the book ISBN, book name, book description, price, author, genre, publisher , year published and copies sold.
 
@@ -50,7 +50,7 @@
 -Must be able to retrieve a list of books associate with an author-
 
 
-# Wish List Management- Alan Chipy
+# Wish List Management
 
 -Must be able to create a wishlist of books that belongs to user and has a unique name
 

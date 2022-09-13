@@ -1,5 +1,4 @@
 <h1 align="center">Bookstore API</h1>
-### BookStore webapp Backend
 
 ## What is this?
 
@@ -12,7 +11,7 @@ This web application includes:
 -Book Details 
 -Wish List Management
 
-### How Was it Made?
+## How Was it Made?
 This Was Made using Flask as the framework, Python for the backend, SQLlite for database, PostMan to Test the application. 
 
 ## What I Learned
